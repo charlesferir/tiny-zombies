@@ -16,18 +16,30 @@ pub struct TileScale(f32);
 
 #[derive(Resource, Default)]
 pub struct MapDescriptor {
-    width: usize,
-    height: usize,
-    tile_scale: usize,
+    pub width: usize,
+    pub height: usize,
+    pub tile_scale: usize,
+}
+
+#[derive(Resource, Default)]
+pub struct MainAtlas {
+    pub handle: Handle<TextureAtlas>,
 }
 
 impl Plugin for MapPugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_map);
+        app.insert_resource(ClearColor(Color::rgb(
+            118.0 / 255.0,
+            59.0 / 255.0,
+            54.0 / 255.0,
+        )))
+        .init_resource::<MapDescriptor>()
+        .insert_resource(MainAtlas::default())
+        .add_startup_system(setup_map);
     }
 }
 
-trait FromTile {
+pub trait FromTile {
     fn from_tile(x: usize, y: usize, map_descriptor: &ResMut<MapDescriptor>) -> Self;
 }
 
@@ -87,7 +99,7 @@ fn parse_map_descriptor(
     map_file: &File,
     commands: &mut Commands,
     map_descriptor: &mut ResMut<MapDescriptor>,
-    texture_atlas_handle: Handle<TextureAtlas>,
+    texture_atlas_handle: &Handle<TextureAtlas>,
 ) -> Result<(), BadMapDescriptor> {
     for (y, line) in BufReader::new(map_file).lines().enumerate() {
         if let Ok(line) = line {
@@ -111,10 +123,11 @@ fn parse_map_descriptor(
     Ok(())
 }
 
-fn setup_map(
+pub fn setup_map(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut main_atlas: ResMut<MainAtlas>,
     mut app_exit_events: EventWriter<AppExit>,
     mut map_descriptor: ResMut<MapDescriptor>,
 ) {
@@ -137,11 +150,13 @@ fn setup_map(
         None,
     );
 
+    main_atlas.handle = texture_atlases.add(texture_atlas);
+
     match parse_map_descriptor(
         &map_desc_file,
         &mut commands,
         &mut map_descriptor,
-        texture_atlases.add(texture_atlas),
+        &main_atlas.handle,
     ) {
         Err(_) => {
             app_exit_events.send(AppExit);
