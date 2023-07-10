@@ -58,3 +58,11 @@ pub fn ctotile(c: char) -> Option<SpriteIndex> {
         }
     })
 }
+
+pub fn collide(c: char) -> bool {
+    match c {
+        ' ' => false,
+        '░' => false,
+        _ => true,
+    }
+}

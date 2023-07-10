@@ -1,14 +1,18 @@
+use crate::collider::Collider;
+use crate::map;
+use crate::map::FromTile;
 use bevy::prelude::*;
 
 pub struct PlayerPugin;
 
-use crate::map;
-use crate::map::FromTile;
-
 const PLAYER_INDEX: usize = 84;
+pub const PLAYER_SPEED: f32 = 200.;
 
-#[derive(Component)]
-struct Player;
+#[derive(Component, Debug, Default)]
+pub struct Player {
+    pub direction: Vec2,
+    pub velocity: Vec2,
+}
 
 impl Plugin for PlayerPugin {
     fn build(&self, app: &mut App) {
@@ -17,50 +21,50 @@ impl Plugin for PlayerPugin {
     }
 }
 
-fn setup_player(
-    mut commands: Commands,
-    main_atlas: Res<map::MainAtlas>,
-    map_descriptor: ResMut<map::MapDescriptor>,
-) {
+fn setup_player(mut commands: Commands, map_descriptor: ResMut<map::MapDescriptor>) {
     commands.spawn((
-        SpriteSheetBundle {
-            texture_atlas: main_atlas.handle.clone(),
-            sprite: TextureAtlasSprite::new(PLAYER_INDEX),
+        SpriteBundle {
+            texture: map_descriptor.textures[PLAYER_INDEX].clone(),
             transform: Transform::from_tile(
                 map_descriptor.width / 2,
-                map_descriptor.height / 2 + 1,
+                map_descriptor.height / 2 + 2,
+                1,
                 &map_descriptor,
             ),
             ..default()
         },
-        Player {},
+        Player { ..default() },
+        Collider,
     ));
 }
 
-fn move_player_system(
+pub fn move_player_system(
     keyboard_input: Res<Input<KeyCode>>,
     time: Res<Time>,
     mut player_position: Query<(&mut Player, &mut Transform)>,
 ) {
-    for (_, mut transform) in &mut player_position {
-        let mut x_dir = 0;
-        let mut y_dir = 0;
+    for (mut player, mut transform) in &mut player_position {
         let dt = time.delta_seconds();
+        player.direction.x = 0.;
+        player.direction.y = 0.;
 
         if keyboard_input.pressed(KeyCode::Q) {
-            x_dir = -1;
+            player.direction.x = -1.;
         }
         if keyboard_input.pressed(KeyCode::D) {
-            x_dir = 1;
+            player.direction.x = 1.;
         }
         if keyboard_input.pressed(KeyCode::S) {
-            y_dir = -1;
+            player.direction.y = -1.;
         }
         if keyboard_input.pressed(KeyCode::Z) {
-            y_dir = 1;
+            player.direction.y = 1.;
         }
 
-        transform.translation.x += x_dir as f32 * 300. * dt;
-        transform.translation.y += y_dir as f32 * 300. * dt;
+        player.velocity.x = player.direction.x * PLAYER_SPEED;
+        player.velocity.y = player.direction.y * PLAYER_SPEED;
+
+        transform.translation.x += player.velocity.x * dt;
+        transform.translation.y += player.velocity.y * dt;
     }
 }
